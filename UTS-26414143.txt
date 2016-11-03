@@ -1,0 +1,86 @@
+No.1
+--Mengunduh data
+from __future__ import ( division, absolute_import, print_function, unicode_literals )
+
+import sys, os, tempfile, logging
+
+if sys.version_info >= (3,):
+    import urllib.request as urllib2
+    import urllib.parse as urlparse
+else:
+    import urllib2
+    import urlparse
+
+def download_file(url, desc=None):
+    u = urllib2.urlopen(url)
+
+    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+    filename = os.path.basename(path)
+    if not filename:
+        filename = 'downloaded.file'
+    if desc:
+        filename = os.path.join(desc, filename)
+
+    with open(filename, 'wb') as f:
+        meta = u.info()
+        meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
+        meta_length = meta_func("Content-Length")
+        file_size = None
+        if meta_length:
+            file_size = int(meta_length[0])
+        print("Downloading: {0} Bytes: {1}".format(url, file_size))
+
+        file_size_dl = 0
+        block_sz = 8192
+        while True:
+            buffer = u.read(block_sz)
+            if not buffer:
+                break
+
+            file_size_dl += len(buffer)
+            f.write(buffer)
+
+            status = "{0:16}".format(file_size_dl)
+            if file_size:
+                status += "   [{0:6.2f}%]".format(file_size_dl * 100 / file_size)
+            status += chr(13)
+            print(status, end="")
+        print()
+
+    return filename
+
+url = "http://api.worldbank.org/v2/en/indicator/SI.POV.GINI?downloadformat=csv"
+filename = download_file(url)
+print(filename)
+
+--Extract data
+import zipfile
+
+fh = open('SI.POV.GINI', 'rb')
+z = zipfile.ZipFile(fh)
+for name in z.namelist():
+    outfile = open(name, 'wb')
+    outfile.write('C:\\'+z.read(name))
+    outfile.close()
+fh.close()
+
+--menampilkan data
+awk 'NF > 0' API_SI.POV.GINI_DS2_en_csv_v2.csv | awk 'END { print NR }' API_SI.POV.GINI_DS2_en_csv_v2.csv
+	awk -F',' '
+	{col=$1}{if((col ~  /^-?[0-9]*([.][0-9]+)?$/) && ($0!=""))                 
+	{
+     	sum+=col;
+    	 a[x++]=col;
+    	 b[col]++
+    	 if(b[col]>hf){hf=b[col]}
+	}
+	}
+	END{n = asort(a);idx=int((x+1)/2)
+   	  print "Mean: " sum/x
+     	print "Median: " ((idx==(x+1)/2) ? a[idx] : (a[idx]+a[idx+1])/2)
+     	for (i in b){if(b[i]==hf){(k=="") ? (k=i):(k=k FS i)}{FS=","}}
+     	print "Mode: " k
+	}' API_SI.POV.GINI_DS2_en_csv_v2.csv 
+
+No.2
+wget "https://aplikasi.pertanian.go.id/smshargakab/lhk03prov.asp"
